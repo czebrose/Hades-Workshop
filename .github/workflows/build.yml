@@ -95,11 +95,11 @@ jobs:
                 Write-Host "    $ext ($($bytes.Length) bytes):"
                 if ($bytes.Length -gt 0) {
                   Write-Host ("      hex: " + (($bytes | Select-Object -First 48 | ForEach-Object { $_.ToString("X2") }) -join " "))
-                  Get-Content $f | Select-Object -First 15 | ForEach-Object { "      $_" }
+                  Get-Content $f | Select-Object -First 15 | ForEach-Object { Write-Host "      $_" }
                 }
               } else { Write-Host "    (no $ext file)" }
             }
-            Get-ChildItem -Filter "HadesWorkshopLog.txt" -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "    HadesWorkshopLog.txt:"; Get-Content $_ | Select-Object -First 10 }
+            Get-ChildItem -Filter "HadesWorkshopLog.txt" -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "    HadesWorkshopLog.txt:"; Get-Content $_ | Select-Object -First 10 | ForEach-Object { Write-Host "      $_" } }
             Copy-Item "$name.*" diag\ -ErrorAction SilentlyContinue
             if (-not $exited) { $script:failures += "$name timed out"; return "" }
             if ($p.ExitCode -ne $expected) { $script:failures += "$name exit code $($p.ExitCode), expected $expected" }
@@ -110,7 +110,8 @@ jobs:
           Run-Hw "control_windowed" "help`nexit" 0 @() | Out-Null
           Run-Hw "control_exit_only" "exit" 0 @() | Out-Null
           $log = Run-Hw "help" "help" 0
-          if ($log -notmatch "get FIELDNAME") { $failures += "help output is missing the get command" }
+          if (-not "$log".Contains("get FIELDNAME")) { $failures += "help output is missing the get command" }
+          if (-not "$log".Contains("finished: 0 error(s), 0 warning(s)")) { $failures += "help output is missing the summary line" }
           Run-Hw "bad_open" "open C:\does\not\exist\FF9_Launcher.exe" 1 | Out-Null
           if ($failures.Count -gt 0) { $failures | ForEach-Object { Write-Host "FAIL: $_" }; exit 1 }
           Write-Host "Smoke tests passed"
