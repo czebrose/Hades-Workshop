@@ -12,6 +12,7 @@ public:
 	~LoadingDialog();
 };
 
+extern bool LoadingDialogHeadless; // when true, all LoadingDialog* calls do nothing
 void LoadingDialogCreate(wxWindow* parent);
 void LoadingDialogInit(unsigned int objamount, const wxString& title);
 void LoadingDialogUpdate(unsigned int objdone, wxString message = wxEmptyString);

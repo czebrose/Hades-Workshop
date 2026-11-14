@@ -9,6 +9,7 @@
 #include <sstream>
 #include <string>
 #include <wx/cmdline.h>
+#include <wx/log.h>
 #include "main_command.h"
 #include "Gui_LoadingDialog.h"
 #include "Gui_Preferences.h"
@@ -26,6 +27,7 @@
 static const wxCmdLineEntryDesc cmdLineDesc[] = {
 	{ wxCMD_LINE_OPTION, "i", "input",   "Input command file", wxCMD_LINE_VAL_STRING, wxCMD_LINE_OPTION_MANDATORY },
 	{ wxCMD_LINE_OPTION, "o", "output",  "Output informations" },
+	{ wxCMD_LINE_SWITCH, "q", "headless", "Run without any window, mirror the output to stdout and exit when done (exit code: 0 = success, 1 = errors, 2 = warnings only)" },
 	{ wxCMD_LINE_NONE }
 };
 
@@ -70,9 +72,19 @@ bool MainApp::OnInit() {
 				if (!parser.Found("o", &outputname))
 					outputname = wxEmptyString;
 				if (input.IsOpened()) {
+					bool headless = parser.Found("q");
+					if (headless) {
+						// Nothing may block waiting for a click: route logs to stderr, silence asserts, no progress popups
+						wxSetAssertHandler(NULL);
+						delete wxLog::SetActiveTarget(new wxLogStderr());
+						LoadingDialogHeadless = true;
+					}
 					CommandFrame* cmdframe = new CommandFrame(NULL);
 					SetTopWindow(cmdframe);
-					cmdframe->Show();
+					if (headless)
+						cmdframe->EnableHeadlessMode();
+					else
+						cmdframe->Show();
 					cmdframe->ExecuteCommands(input, outputname);
 					return true;
 				}
@@ -85,6 +97,11 @@ bool MainApp::OnInit() {
 	GetTopWindow()->Show();
 	wxToolTip::SetAutoPop(60000); // TODO: doesn't seem to have any effect...
 	return true;
+}
+
+int MainApp::OnRun() {
+	int result = wxApp::OnRun();
+	return g_command_exit_code >= 0 ? g_command_exit_code : result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -8,8 +8,13 @@
 #include "File_Batching.h"
 #include "CommonUtility.h"
 #include "main.h"
+#ifdef __WXMSW__
+#include <wx/msw/wrapwin.h>
+#endif
 
 #define COMMA ,
+
+int g_command_exit_code = -1;
 
 // Database
 
@@ -583,6 +588,11 @@ private:
 			}
 		}
 		cmdframe->executing_commands = false;
+		if (cmdframe->headless) {
+			CommandFrame* frame = cmdframe;
+			frame->CallAfter([frame]() { frame->FinishHeadless(); });
+			return (wxThread::ExitCode)0;
+		}
 		cmdframe->m_morecommand->Enable(true);
 		cmdframe->m_morecommand->SetFocus();
 		if (cmdframe->exit)
@@ -749,7 +759,13 @@ void CommandFrame::DisposeOfMergedDataSet(SaveSet saveset) {
 
 void CommandFrame::ExecuteCommands(wxFile& input, wxString outputname) {
 	if (!input.ReadAll(&completefile)) {
-		Close();
+		if (headless) {
+			WriteToOutput(_(L"Error: cannot read the input command file\n"));
+			error_count++;
+			FinishHeadless();
+		} else {
+			Close();
+		}
 		return;
 	}
 	while (completefile.EndsWith(_(L"\n")))
@@ -770,19 +786,55 @@ void CommandFrame::ExecuteCommands(wxFile& input, wxString outputname) {
 	}
 }
 
+void CommandFrame::EnableHeadlessMode() {
+	headless = true;
+#ifdef __WXMSW__
+	// This is a GUI-subsystem program: when launched with redirected handles (pipes, as agents
+	// and scripts do) the standard output handle is inherited; when launched from an interactive
+	// console it has none, so attach to the parent's console instead.
+	HANDLE h = ::GetStdHandle(STD_OUTPUT_HANDLE);
+	if (h == NULL || h == INVALID_HANDLE_VALUE) {
+		h = NULL;
+		if (::AttachConsole(ATTACH_PARENT_PROCESS)) {
+			h = ::CreateFileW(L"CONOUT$", GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
+			if (h == INVALID_HANDLE_VALUE)
+				h = NULL;
+		}
+	}
+	stdout_handle = h;
+#endif
+}
+
+void CommandFrame::FinishHeadless() {
+	WriteToOutput(wxString::Format(wxT("finished: %u error(s), %u warning(s)\n"), error_count, warning_count));
+	g_command_exit_code = error_count > 0 ? 1 : (warning_count > 0 ? 2 : 0);
+	if (output.IsOpened())
+		output.Close();
+	Destroy();
+}
+
 void CommandFrame::WriteToOutput(wxString str) {
 	m_output->AppendText(str);
 	if (output.IsOpened())
 		output.Write(str);
+#ifdef __WXMSW__
+	if (stdout_handle != NULL) {
+		wxScopedCharBuffer buffer = str.utf8_str();
+		DWORD written;
+		::WriteFile((HANDLE)stdout_handle, buffer.data(), (DWORD)buffer.length(), &written, NULL);
+	}
+#endif
 }
 
 bool CommandFrame::RaiseError(wxString errstr) {
+	error_count++;
 	current_line_error = true;
 	WriteToOutput(wxString::Format(wxT("Error L%d: "), line_no + 1) + errstr);
 	return !error_stop;
 }
 
 bool CommandFrame::RaiseWarning(wxString warnstr) {
+	warning_count++;
 	current_line_warning = true;
 	WriteToOutput(wxString::Format(wxT("Warning L%d: "), line_no + 1) + warnstr);
 	return !warning_stop;

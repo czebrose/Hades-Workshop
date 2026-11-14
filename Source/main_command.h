@@ -33,6 +33,9 @@ struct FF9DataSet {
 	FF9DataSet(ConfigurationSet& cfg, string fname, GameType gt);
 };
 
+// Process exit code requested by headless batch mode (-1 when not in headless mode)
+extern int g_command_exit_code;
+
 struct FieldSelector {
 	// DataSet indices
 	unsigned int spell_index = UINT32_MAX;
@@ -112,11 +115,18 @@ public:
 	bool auto_load = false;
 	bool exit = false;
 	long line_no;
+	// Headless mode (-q): no window, output mirrored to stdout, process exits when done
+	bool headless = false;
+	unsigned int error_count = 0;
+	unsigned int warning_count = 0;
+	void* stdout_handle = NULL;
 
 	CommandFrame(wxWindow* parent);
 	SaveSet MergeDataSets(); // For reading purposes only
 	void DisposeOfMergedDataSet(SaveSet saveset);
 	void ExecuteCommands(wxFile& input, wxString outputname);
+	void EnableHeadlessMode();
+	void FinishHeadless();
 
 	void WriteToOutput(wxString str);
 	bool RaiseError(wxString errstr);

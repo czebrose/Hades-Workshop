@@ -194,6 +194,7 @@ namespace hades {
 class MainApp : public wxApp {
 public:
 	virtual bool OnInit();
+	virtual int OnRun();
 };
 
 // declare global static function wxGetApp()

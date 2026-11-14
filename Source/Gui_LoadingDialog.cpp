@@ -13,6 +13,7 @@ LoadingDialog::~LoadingDialog() {
 }
 
 static LoadingDialog* TheLoadingDialog = NULL;
+bool LoadingDialogHeadless = false;
 wxWindow* TheLoadingDialogParent = NULL;
 
 // Doesn't really create the dialog (it would be briefly shown otherwise)...
@@ -21,6 +22,8 @@ void LoadingDialogCreate(wxWindow* parent) {
 }
 
 void LoadingDialogInit(unsigned int objamount, const wxString& title) {
+	if (LoadingDialogHeadless)
+		return;
 	if (TheLoadingDialog==NULL)
 		TheLoadingDialog = new LoadingDialog(TheLoadingDialogParent);
 	if (TheLoadingDialog->is_active)
@@ -35,6 +38,8 @@ void LoadingDialogInit(unsigned int objamount, const wxString& title) {
 }
 
 void LoadingDialogUpdate(unsigned int objdone, wxString message) {
+	if (LoadingDialogHeadless)
+		return;
 	if (!TheLoadingDialog->is_active || TheLoadingDialog->object_amount==0)
 		return;
 	int newvalue = 100*objdone/TheLoadingDialog->object_amount;
@@ -50,6 +55,8 @@ void LoadingDialogUpdate(unsigned int objdone, wxString message) {
 }
 
 void LoadingDialogEnd() {
+	if (LoadingDialogHeadless)
+		return;
 	if (!TheLoadingDialog->is_active)
 		return;
 	TheLoadingDialog->wxGenericProgressDialog::Update(100,_(L"Done"));
