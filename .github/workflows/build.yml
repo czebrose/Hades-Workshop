@@ -76,7 +76,7 @@ jobs:
           function Run-Hw([string]$name, [string]$commands, [int]$expected, [string[]]$flags = @("-q")) {
             Set-Content "$name.txt" $commands
             $args = $flags + @("-i", "$name.txt", "-o", "$name.log")
-            $p = Start-Process dist\HadesWorkshop.exe -ArgumentList $args -PassThru
+            $p = Start-Process dist\HadesWorkshop.exe -ArgumentList $args -PassThru -RedirectStandardOutput "$name.stdout" -RedirectStandardError "$name.stderr"
             $null = $p.Handle  # needed for ExitCode to be available after the process ends
             $exited = $p.WaitForExit(60000)
             if (-not $exited) {
@@ -88,14 +88,27 @@ jobs:
             } else {
               Write-Host ("--- $name : exit code {0} (0x{0:X8})" -f $p.ExitCode)
             }
-            if (Test-Path "$name.log") { Write-Host "    log:"; Get-Content "$name.log" | ForEach-Object { "      $_" } } else { Write-Host "    (no log file)" }
+            foreach ($ext in "log", "stdout", "stderr") {
+              $f = "$name.$ext"
+              if (Test-Path $f) {
+                $bytes = [System.IO.File]::ReadAllBytes((Resolve-Path $f))
+                Write-Host "    $ext ($($bytes.Length) bytes):"
+                if ($bytes.Length -gt 0) {
+                  Write-Host ("      hex: " + (($bytes | Select-Object -First 48 | ForEach-Object { $_.ToString("X2") }) -join " "))
+                  Get-Content $f | Select-Object -First 15 | ForEach-Object { "      $_" }
+                }
+              } else { Write-Host "    (no $ext file)" }
+            }
+            Get-ChildItem -Filter "HadesWorkshopLog.txt" -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "    HadesWorkshopLog.txt:"; Get-Content $_ | Select-Object -First 10 }
             Copy-Item "$name.*" diag\ -ErrorAction SilentlyContinue
             if (-not $exited) { $script:failures += "$name timed out"; return "" }
             if ($p.ExitCode -ne $expected) { $script:failures += "$name exit code $($p.ExitCode), expected $expected" }
             if (Test-Path "$name.log") { return (Get-Content "$name.log" -Raw) } else { return "" }
           }
-          # Control: original (non-headless) batch mode, ends with 'exit'
+          Write-Host "Session: $([System.Diagnostics.Process]::GetCurrentProcess().SessionId), interactive: $([Environment]::UserInteractive)"
+          # Controls: original (non-headless) batch mode, ending with 'exit'
           Run-Hw "control_windowed" "help`nexit" 0 @() | Out-Null
+          Run-Hw "control_exit_only" "exit" 0 @() | Out-Null
           $log = Run-Hw "help" "help" 0
           if ($log -notmatch "get FIELDNAME") { $failures += "help output is missing the get command" }
           Run-Hw "bad_open" "open C:\does\not\exist\FF9_Launcher.exe" 1 | Out-Null
