@@ -811,6 +811,9 @@ void CommandFrame::FinishHeadless() {
 	if (output.IsOpened())
 		output.Close();
 	Destroy();
+	// Destroy() only schedules the deletion for the next idle pass, which never comes when no window
+	// was ever shown (see the comment in wxTopLevelWindowBase::Destroy), so end the main loop directly
+	wxTheApp->ExitMainLoop();
 }
 
 void CommandFrame::WriteToOutput(wxString str) {
