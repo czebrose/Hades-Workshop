@@ -3,6 +3,8 @@
 #include <filesystem>
 #include <algorithm>
 #include "Database_Animation.h"
+// Building with HW_NO_FBX drops the Autodesk FBX SDK dependency: model import/export then fails cleanly (returns 1)
+#ifndef HW_NO_FBX
 #include "fbxsdk.h"
 
 void InitializeSdkObjects(FbxManager*& pManager, FbxScene*& pScene);
@@ -19,6 +21,7 @@ inline FbxString RemoveFbxStringExtension(FbxString value) {
 		value = value.Left(dotpos);
 	return value;
 }
+#endif // HW_NO_FBX
 
 //=============================//
 //     Model Mesh Methods      //
@@ -1042,6 +1045,9 @@ bool ModelDataStruct::Write(fstream& f) {
 }
 
 int ModelDataStruct::Export(const char* outputname, int format, bool exportanims) {
+#ifdef HW_NO_FBX
+	return 1;
+#else
     FbxManager* sdkmanager = NULL;
     FbxScene* sdkscene = NULL;
 	string foldername = outputname;
@@ -1059,9 +1065,13 @@ int ModelDataStruct::Export(const char* outputname, int format, bool exportanims
     if (!exportresult)
         return 1;
     return 0;
+#endif
 }
 
 int ModelDataStruct::Import(const char* inputname, bool retrieveanims) {
+#ifdef HW_NO_FBX
+	return 1;
+#else
 	// ToDo: optimize importation of "animations only" -> don't load the whole fbx model
 	FbxManager* sdkmanager = NULL;
 	FbxScene* sdkscene = NULL;
@@ -1076,6 +1086,7 @@ int ModelDataStruct::Import(const char* inputname, bool retrieveanims) {
 	if (!importresult)
 		return 2;
 	return 0;
+#endif
 }
 
 void ModelDataStruct::SetupPostImportData(fstream& filebase, vector<unsigned int> folderfiles, UnityArchiveMetaData archivelist[UNITY_ARCHIVE_AMOUNT], vector<int64_t> additionalinfotoavoid, UnityArchiveAssetBundle* animbundle, GameObjectHierarchy* basehierarchy, int mergepolicy) {
@@ -1299,6 +1310,7 @@ void ModelDataStruct::SetupPostImportData(fstream& filebase, vector<unsigned int
 	}
 }
 
+#ifndef HW_NO_FBX
 //=============================//
 //       FBX SDK Common        //
 //=============================//
@@ -2462,6 +2474,7 @@ bool LoadScene(const char* pFilename, FbxManager* pManager, FbxDocument* pScene,
 	lImporter->Destroy();
 	return lStatus;
 }
+#endif // HW_NO_FBX
 
 //=============================//
 //           Maths             //
@@ -2508,11 +2521,18 @@ void Quaternion::EulerToQuaternion(Quaternion& q, double roll, double pitch, dou
 }
 
 void Quaternion::QuaternionToEuler(Quaternion& q, double& roll, double& pitch, double& yaw) {
+#ifdef HW_NO_FBX
+	// Only used by the FBX conversion code; plain fallback so the no-FBX build compiles
+	roll = q.GetRoll();
+	pitch = q.GetPitch();
+	yaw = q.GetYaw();
+#else
 	FbxQuaternion fbxquat(q.x, q.y, q.z, q.w);
 	FbxVector4 fbxangle = fbxquat.DecomposeSphericalXYZ();
 	roll = fbxangle[0];
 	pitch = fbxangle[1];
 	yaw = fbxangle[2];
+#endif
 /*	double ysqr = q.y * q.y;
 	// roll (x-axis rotation)
 	double t0 = +2.0 * (q.w * q.x + q.y * q.z);
@@ -2568,9 +2588,14 @@ void Quaternion::UpdateMatrixIfNecessary() {
 }
 
 double Quaternion::GetRoll() {
+#ifdef HW_NO_FBX
+	double ysqr = y*y;
+	return RAD_TO_DEG * atan2(2.0 * (w*x + y*z), 1.0 - 2.0 * (x*x + ysqr));
+#else
 	FbxQuaternion fbxquat(x, y, z, w);
 	FbxVector4 fbxangle = fbxquat.DecomposeSphericalXYZ();
 	return fbxangle[0];
+#endif
 /*	double ysqr = y*y;
 	double t0 = +2.0 * (w*x + y*z);
 	double t1 = +1.0 - 2.0 * (x*x + ysqr);
@@ -2578,9 +2603,15 @@ double Quaternion::GetRoll() {
 }
 
 double Quaternion::GetPitch() {
+#ifdef HW_NO_FBX
+	double t2 = 2.0 * (w*y - z*x);
+	t2 = t2 > 1.0 ? 1.0 : (t2 < -1.0 ? -1.0 : t2);
+	return RAD_TO_DEG * asin(t2);
+#else
 	FbxQuaternion fbxquat(x, y, z, w);
 	FbxVector4 fbxangle = fbxquat.DecomposeSphericalXYZ();
 	return fbxangle[1];
+#endif
 /*	double t2 = +2.0 * (w*y - z*x);
 	t2 = t2 > 1.0 ? 1.0 : t2;
 	t2 = t2 < -1.0 ? -1.0 : t2;
@@ -2588,9 +2619,14 @@ double Quaternion::GetPitch() {
 }
 
 double Quaternion::GetYaw() {
+#ifdef HW_NO_FBX
+	double ysqr = y*y;
+	return RAD_TO_DEG * atan2(2.0 * (w*z + x*y), 1.0 - 2.0 * (ysqr + z*z));
+#else
 	FbxQuaternion fbxquat(x, y, z, w);
 	FbxVector4 fbxangle = fbxquat.DecomposeSphericalXYZ();
 	return fbxangle[2];
+#endif
 /*	double ysqr = y*y;
 	double t3 = +2.0 * (w*z + x*y);
 	double t4 = +1.0 - 2.0 * (ysqr + z*z);
