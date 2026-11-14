@@ -131,6 +131,7 @@ public:
 	bool ProcessCommandParse(wxArrayString args);
 	bool ProcessCommandSave(wxArrayString args);
 	bool ProcessCommandSelect(wxArrayString args);
+	bool ProcessCommandGet(wxArrayString args);
 	bool ProcessCommandSet(wxArrayString args);
 	bool ProcessCommandHelp(wxArrayString args);
 

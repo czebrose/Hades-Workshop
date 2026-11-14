@@ -837,6 +837,10 @@ bool CommandFrame::ProcessCommand(wxString command, wxArrayString args) {
 		if (dataset.size() == 0)
 			return RaiseError(_(L"'set' cannot be used before opening at least 1 game\n"));
 		return ProcessCommandSet(args);
+	} else if (command.IsSameAs("get")) {
+		if (dataset.size() == 0)
+			return RaiseError(_(L"'get' cannot be used before opening at least 1 game\n"));
+		return ProcessCommandGet(args);
 	} else if (command.IsSameAs("select")) {
 		if (dataset.size() == 0)
 			return RaiseError(_(L"'select' cannot be used before opening at least 1 game\n"));
@@ -1964,6 +1968,30 @@ bool CommandFrame::ProcessCommandSelect(wxArrayString args) {
 	return RaiseError(wxString::Format(wxT("'%s' is not a valid index name\n"), args[0]));
 }
 
+bool CommandFrame::ProcessCommandGet(wxArrayString args) {
+	if (args.GetCount() < 1)
+		return RaiseError(_("usage is 'get FIELDNAME' (use 'help field_name' for displaying a list of possible names)\n"));
+	unsigned int i, j;
+	for (i = 0; i < EDITABLE_FIELD_COUNT; i++) {
+		if (!args[0].IsSameAs(const_editable_field[i]->name))
+			continue;
+		for (j = 0; j < dataset.size(); j++) {
+			if (!const_editable_field[i]->checker(dataset[j].saveset, selector))
+				continue;
+			if (const_editable_field[i]->get_type() == 0) {
+				editable_field_numerical* edit = dynamic_cast<editable_field_numerical*>(const_editable_field[i]);
+				WriteToOutput(wxString::Format(wxT("%s = %lld\n"), args[0], edit->getter(dataset[j].saveset, selector)));
+			} else if (const_editable_field[i]->get_type() == 1) {
+				editable_field_string* edit = dynamic_cast<editable_field_string*>(const_editable_field[i]);
+				WriteToOutput(wxString::Format(wxT("%s = \"%s\"\n"), args[0], edit->getter(dataset[j].saveset, selector)));
+			}
+			return true;
+		}
+		return RaiseWarning(wxString::Format(wxT("the current selection parameters are invalid for reading %s\n"), args[0]));
+	}
+	return RaiseError(wxString::Format(wxT("'%s' doesn't correspond to a data field\n"), args[0]));
+}
+
 bool CommandFrame::ProcessCommandSet(wxArrayString args) {
 	if (args.GetCount() < 2)
 		return RaiseError(_("usage is 'set FIELDNAME VALUE' (use 'help field_name' for displaying a list of possible names)\n"));
@@ -2025,6 +2053,7 @@ bool CommandFrame::ProcessCommandHelp(wxArrayString args) {
 			L"- 'parse INPUT.txt OUTPUT.eb.bytes'\n"\
 			L"- 'parse INPUT.eb.bytes OUTPUT.txt'\n"\
 			L"- 'select INDEXNAME VALUE'\n"\
+			L"- 'get FIELDNAME'\n"\
 			L"- 'set FIELDNAME VALUE'\n"\
 			L"- 'exit'\n"));
 	} else {
