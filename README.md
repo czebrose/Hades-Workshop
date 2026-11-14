@@ -17,3 +17,5 @@ Run a command file without any window:
 - Run `help` in a command file to list commands; `help field_name` / `help index_name` list the editable fields and selectors.
 - Reading data: `get FIELDNAME` prints one value for the current `select`ion; `export data spreadsheet FILE PREFIX` dumps a table; `export data reimport FILE PREFIX` dumps `select`/`set` lines that can be edited and run back in.
 - From `cmd.exe`, use `start /wait` (it doesn't wait for GUI programs); bash and PowerShell's `Start-Process -Wait` do wait.
+
+Agent workspace template: `agent-workspace/` (CLAUDE.md, helper scripts and `docs/hw-batch-reference.md`, the full list of `select` indices and `get`/`set` fields). Copy it somewhere outside the repo, put the built exe in `tools/HadesWorkshop/`, set the paths in `mod.conf`, and open the folder in Claude Code.

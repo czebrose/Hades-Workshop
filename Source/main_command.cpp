@@ -1059,7 +1059,7 @@ bool CommandFrame::ProcessCommandOpen(wxArrayString args) {
 
 bool CommandFrame::ProcessCommandLoad(wxArrayString args) {
 	if (args.GetCount() < 1)
-		return RaiseError(_("usage is 'load SECTION'\nSECTION can be one (or several) of the followings: spell, support, command, stat, party_special, enemy, item, shop, card, text, world, field, scene, spell_animation, interface, assembly\n"));
+		return RaiseError(_("usage is 'load SECTION'\nSECTION can be one (or several) of the followings: spell, support, command, stat, party_special, battle, item, shop, card, text, world, field, battle_scene, spell_animation, interface, assembly\n"));
 	unsigned int i, j;
 	bool found;
 	fstream f;
@@ -1728,7 +1728,7 @@ bool CommandFrame::ProcessCommandExport(wxArrayString args) {
 		}
 	}
 	if (errorformat)
-		return RaiseError(_("usage is one of the followings:\n 'export hws FILENAME [SECTIONS]'\n 'export text FILENAME [TEXTID]'\n 'export uitext FILENAME [UITEXTID]'\n 'export script field/enemy/world FILENAME [FIELDID/BATTLEID/WORLDID]'\n 'export data FORMAT FILENAME DATASTRUCTURE'\n"));
+		return RaiseError(_("usage is one of the followings:\n 'export hws FILENAME [SECTIONS]'\n 'export text FILENAME [TEXTID]'\n 'export uitext FILENAME [UITEXTID]'\n 'export script field/battle/world FILENAME [FIELDID/BATTLEID/WORLDID]'\n 'export data FORMAT FILENAME DATASTRUCTURE'\n"));
 	return true;
 }
 
@@ -1844,7 +1844,7 @@ bool CommandFrame::ProcessCommandSave(wxArrayString args) {
 			int assetformat = dataset[0].config.dll_usage != 0 ? 1 : 0;
 			unsigned int sectionindex = 2;
 			while (sectionindex < 4) {
-				if (args.GetCount() >= sectionindex) {
+				if (args.GetCount() > sectionindex) {
 					if (args[sectionindex].IsSameAs(L"dll")) {
 						dllformat = 0;
 						sectionindex++;
@@ -1930,7 +1930,7 @@ bool CommandFrame::ProcessCommandSave(wxArrayString args) {
 			bool undo = false;
 			bool blockcheck = false;
 			while (sectionindex < 4) {
-				if (args.GetCount() >= sectionindex) {
+				if (args.GetCount() > sectionindex) {
 					if (args[sectionindex].IsSameAs(L"undo")) {
 						undo = true;
 						sectionindex++;
@@ -2103,7 +2103,7 @@ bool CommandFrame::ProcessCommandHelp(wxArrayString args) {
 			L"- 'export hws FILENAME [SECTIONS]'\n"\
 			L"- 'export text FILENAME [TEXTID]'\n"\
 			L"- 'export uitext FILENAME [UITEXTID]'\n"\
-			L"- 'export script field/enemy/world FILENAME [FIELDID/BATTLEID/WORLDID]'\n"\
+			L"- 'export script field/battle/world FILENAME [FIELDID/BATTLEID/WORLDID]'\n"\
 			L"- 'export data FORMAT FILENAME DATASTRUCTURE'\n"\
 			L"- 'parse INPUT.txt OUTPUT.eb.bytes'\n"\
 			L"- 'parse INPUT.eb.bytes OUTPUT.txt'\n"\
